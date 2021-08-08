@@ -108,4 +108,8 @@ public class BillController {
         return ResponseEntity.ok(billService.getReportByYear(year));
     }
 
+    @GetMapping("/bill/reportByRangeDate")
+    public ResponseEntity<ReportDTO> reportByRangeDate(@RequestParam Long startTime, @RequestParam Long endTime) {
+        return ResponseEntity.ok(billService.getReportByRangeDate(startTime, endTime));
+    }
 }

@@ -29,6 +29,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -357,6 +360,26 @@ public class BillServiceImpl implements BillService {
         return getReportByBillList(bills, null, year);
     }
 
+    @Override
+    public ReportDTO getReportByRangeDate(Long startTime, Long endTime) {
+        List<Bill> bills = billRepository.getByLastModifiedDateAndStatus(Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime), BillStatus.FINISH);
+
+        Long totalImportMoney = bills.stream().mapToLong(Bill::getTotalImportMoney).sum();
+        Long totalMoneyFromSale = bills.stream().mapToLong(Bill::getFinalPayMoney).sum();
+        Long interestMoney = totalMoneyFromSale - totalImportMoney;
+
+        List<ProductDTO> totalProduct = new ArrayList<>();
+        for (Bill bill : bills) {
+            for (Item item : bill.getItems()) {
+                totalProduct.add(productMapper.toDTO(item.getProduct()));
+            }
+        }
+        ReportDTO result = new ReportDTO(totalImportMoney, interestMoney, totalMoneyFromSale, totalProduct);
+
+        return result;
+    }
+
+
     private ReportDTO getReportByBillList(List<Bill> bills, Integer month, Integer year) {
         Long totalImportMoney = bills.stream().mapToLong(Bill::getTotalImportMoney).sum();
         Long totalMoneyFromSale = bills.stream().mapToLong(Bill::getFinalPayMoney).sum();
@@ -385,6 +408,31 @@ public class BillServiceImpl implements BillService {
             }
         }
 
+         Map<Integer, Long> interestPerMonth = initMapReportPerMonth();
+         Map<Integer, Long> importPerMonth = initMapReportPerMonth();
+         Map<Integer, Long> moneyFromSalePerMonth = initMapReportPerMonth();
+
+        for (Bill bill : bills) {
+            LocalDateTime localDateTime = LocalDateTime.ofInstant(bill.getLastModifiedDate(), ZoneId.systemDefault());
+            int monthCreate = localDateTime.getMonthValue();
+            importPerMonth.put(monthCreate, importPerMonth.get(monthCreate) + bill.getTotalImportMoney());
+            moneyFromSalePerMonth.put(monthCreate, moneyFromSalePerMonth.get(monthCreate) + bill.getFinalPayMoney());
+
+            Long interest = bill.getFinalPayMoney() - bill.getTotalImportMoney();
+            interestPerMonth.put(monthCreate, interestPerMonth.get(monthCreate) + interest);
+        }
+        result.setInterestPerMonth(interestPerMonth);
+        result.setImportPerMonth(importPerMonth);
+        result.setMoneyFromSalePerMonth(moneyFromSalePerMonth);
+
         return result;
+    }
+
+    private Map<Integer, Long> initMapReportPerMonth(){
+        Map<Integer, Long> map = new HashMap<>();
+        for (int i = 1; i < 13; i++) {
+            map.put(i, 0L);
+        }
+        return map;
     }
 }

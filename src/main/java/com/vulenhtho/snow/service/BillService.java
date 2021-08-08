@@ -36,4 +36,6 @@ public interface BillService {
 
     ReportDTO getReportByYear(Integer year);
 
+    ReportDTO getReportByRangeDate(Long startTime, Long endTime);
+
 }
