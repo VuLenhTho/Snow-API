@@ -357,7 +357,16 @@ public class BillServiceImpl implements BillService {
 
         List<Bill> bills = billRepository.getByLastModifiedDateAndStatus(firstDayOfYear.toInstant(), lastDayOfYear.toInstant(), BillStatus.FINISH);
 
-        return getReportByBillList(bills, null, year);
+        List<ProductDTO> totalProduct = new ArrayList<>();
+        for (Bill bill : bills) {
+            for (Item item : bill.getItems()) {
+                totalProduct.add(productMapper.toDTO(item.getProduct()));
+            }
+        }
+        ReportDTO reportDTO = getReportByBillList(bills, null, year);
+        reportDTO.setTotalProduct(totalProduct);
+
+        return reportDTO;
     }
 
     @Override
